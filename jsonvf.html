@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>JSON Formatter & Validator | Pretty Print & Lint</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(145deg, #eef2f7 0%, #d9e0e8 100%);
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      padding: 2rem 1.5rem;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(2px);
+      border-radius: 2rem;
+      box-shadow: 0 25px 45px -12px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.05);
+      overflow: hidden;
+      padding: 1.8rem 2rem 2rem 2rem;
+      transition: all 0.2s ease;
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #1a2a3f, #0f2b3d);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      letter-spacing: -0.3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h1::before {
+      content: "{}";
+      font-weight: 700;
+      background: none;
+      color: #2c7da0;
+      font-size: 2rem;
+    }
+
+    .sub {
+      color: #2c5f7a;
+      margin-top: 0.25rem;
+      margin-bottom: 1.8rem;
+      font-weight: 500;
+      border-left: 3px solid #2c7da0;
+      padding-left: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    /* two column layout */
+    .editor-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1.5rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: #f8fafd;
+      padding: 0.9rem 1.2rem;
+      border-bottom: 1px solid #e9edf2;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #1e2f3e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .card-header span:first-child {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      background: #eef2fa;
+      border-radius: 40px;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      font-weight: 500;
+      color: #2c7da0;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 380px;
+      padding: 1.2rem;
+      font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      border: none;
+      resize: vertical;
+      background: #ffffff;
+      color: #1e2a36;
+      outline: none;
+      transition: background 0.1s;
+      tab-size: 2;
+    }
+
+    textarea:focus {
+      background: #fefef7;
+      box-shadow: inset 0 0 0 2px rgba(44,125,160,0.2);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin: 0.5rem 0 1.2rem 0;
+      background: rgba(255,255,240,0.5);
+      padding: 0.75rem 1rem;
+      border-radius: 60px;
+      backdrop-filter: blur(4px);
+    }
+
+    button, .indent-selector {
+      background: #ffffff;
+      border: 1px solid #cad2db;
+      padding: 0.5rem 1.1rem;
+      border-radius: 2rem;
+      font-weight: 500;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      color: #1f3b4c;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+    button i {
+      font-style: normal;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+
+    button:hover {
+      background: #eef2fa;
+      border-color: #2c7da0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .indent-selector {
+      background: #f8fafc;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+    }
+
+    .status-area {
+      background: #eef2f5;
+      border-radius: 1.2rem;
+      padding: 0.9rem 1.2rem;
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-left: 5px solid #2c7da0;
+    }
+
+    .status-message {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .status-icon {
+      font-size: 1.2rem;
+    }
+
+    .error-status {
+      border-left-color: #e25c5c;
+      background: #fff5f5;
+      color: #b91c1c;
+    }
+
+    .success-status {
+      border-left-color: #2b8c4e;
+      background: #f0faf3;
+      color: #166534;
+    }
+
+    hr {
+      margin: 0.8rem 0;
+      border: none;
+      border-top: 1px solid #dce3ea;
+    }
+
+    footer {
+      font-size: 0.7rem;
+      text-align: center;
+      margin-top: 1.2rem;
+      color: #4c6a7c;
+    }
+
+    @media (max-width: 780px) {
+      .editor-panel {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
+      .app-container {
+        padding: 1.2rem;
+      }
+      textarea {
+        min-height: 260px;
+      }
+      .toolbar {
+        border-radius: 1.2rem;
+        justify-content: center;
+      }
+    }
+
+    .copy-feedback {
+      transition: all 0.1s;
+    }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <h1>JSON Formatter & Validator</h1>
+  <div class="sub">Beautify, minify, validate — catch syntax errors instantly</div>
+
+  <div class="editor-panel">
+    <!-- INPUT SECTION -->
+    <div class="card">
+      <div class="card-header">
+        <span>📥 JSON Input</span>
+        <span class="badge">raw / minified</span>
+      </div>
+      <textarea id="jsonInput" placeholder='Paste or type JSON here...\nExample: {"product":"Laptop","price":1299,"tags":["tech","sale"]}'></textarea>
+    </div>
+
+    <!-- OUTPUT SECTION -->
+    <div class="card">
+      <div class="card-header">
+        <span>✨ Formatted / Minified Output</span>
+        <span class="badge">copy with one click</span>
+      </div>
+      <textarea id="jsonOutput" placeholder="Formatted JSON will appear here ..." readonly></textarea>
+    </div>
+  </div>
+
+  <!-- Action Buttons + indent selector -->
+  <div class="toolbar">
+    <button id="formatBtn" title="Pretty print with selected indentation">🎨 Format</button>
+    <button id="validateBtn" title="Check JSON validity without changing output">✅ Validate</button>
+    <button id="minifyBtn" title="Compress JSON to one line">🗜️ Minify</button>
+    <button id="copyBtn" title="Copy output to clipboard">📋 Copy Output</button>
+    <button id="clearBtn" title="Clear both input and output">🧹 Clear All</button>
+    <button id="exampleBtn" title="Load valid sample JSON">📄 Example</button>
+    <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+      <span style="font-size: 0.75rem; color:#2c5f7a;">Indent:</span>
+      <select id="indentSelect" class="indent-selector">
+        <option value="2">2 spaces</option>
+        <option value="4">4 spaces</option>
+        <option value="tab">Tab (\t)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Status & validation messages -->
+  <div class="status-area" id="statusBox">
+    <div class="status-icon">⚡</div>
+    <div class="status-message" id="statusMessage">Ready — paste JSON and click Format or Validate</div>
+  </div>
+  <footer>✔️ Strict JSON validation | Format preserves data types | Error line details shown</footer>
+</div>
+
+<script>
+  (function() {
+    // DOM elements
+    const inputArea = document.getElementById('jsonInput');
+    const outputArea = document.getElementById('jsonOutput');
+    const formatBtn = document.getElementById('formatBtn');
+    const validateBtn = document.getElementById('validateBtn');
+    const minifyBtn = document.getElementById('minifyBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const exampleBtn = document.getElementById('exampleBtn');
+    const indentSelect = document.getElementById('indentSelect');
+    const statusMsgDiv = document.getElementById('statusMessage');
+    const statusBox = document.getElementById('statusBox');
+
+    // Helper: update status with style
+    function setStatus(message, isError = false, isSuccess = false) {
+      statusMsgDiv.innerText = message;
+      // reset classes
+      statusBox.classList.remove('error-status', 'success-status');
+      if (isError) {
+        statusBox.classList.add('error-status');
+        statusBox.querySelector('.status-icon').innerHTML = '❌';
+      } else if (isSuccess) {
+        statusBox.classList.add('success-status');
+        statusBox.querySelector('.status-icon').innerHTML = '✔️';
+      } else {
+        statusBox.querySelector('.status-icon').innerHTML = 'ℹ️';
+      }
+    }
+
+    // Reset status to neutral info
+    function resetNeutral(message = "Ready") {
+      setStatus(message, false, false);
+    }
+
+    // get indent parameter for JSON.stringify (spaces count or tab)
+    function getIndentParameter() {
+      const indentValue = indentSelect.value;
+      if (indentValue === 'tab') {
+        return '\t';
+      }
+      const spaces = parseInt(indentValue, 10);
+      return isNaN(spaces) ? 2 : spaces;
+    }
+
+    // core: parse JSON from string, return object or throw error
+    function parseJSONSafely(jsonString) {
+      const trimmed = jsonString.trim();
+      if (trimmed === "") {
+        throw new Error("Empty input — no JSON provided.");
+      }
+      return JSON.parse(jsonString);
+    }
+
+    // Format action: read input -> pretty print -> output & success/error
+    function formatJSON() {
+      const rawInput = inputArea.value;
+      if (rawInput.trim() === "") {
+        setStatus("⚠️ Nothing to format. Please enter JSON data.", true);
+        outputArea.value = "";
+        return;
+      }
+      try {
+        const parsed = parseJSONSafely(rawInput);
+        const indentParam = getIndentParameter();
+        const pretty = JSON.stringify(parsed, null, indentParam);
+        outputArea.value = pretty;
+        const lineCount = pretty.split('\n').length;
+        setStatus(`✅ Valid JSON — formatted successfully (${lineCount} lines, ${pretty.length} chars)`, false, true);
+      } catch (err) {
+        let errorHint = err.message;
+        // enhance error with line context if possible (simulate line/column)
+        if (err instanceof SyntaxError) {
+          const match = err.message.match(/position (\d+)/);
+          if (match && match[1]) {
+            const pos = parseInt(match[1], 10);
+            const lines = rawInput.substring(0, pos).split('\n');
+            const line = lines.length;
+            const column = lines[lines.length-1].length + 1;
+            errorHint = `${err.message} (at line ${line}, column ${column})`;
+          } else {
+            errorHint = `JSON syntax error: ${err.message}`;
+          }
+        } else {
+          errorHint = `Invalid JSON: ${err.message}`;
+        }
+        setStatus(`❌ Format failed — ${errorHint}`, true);
+        outputArea.value = "";   // clear output on invalid
+      }
+    }
+
+    // Validate only: does not modify output, just shows status
+    function validateOnly() {
+      const rawInput = inputArea.value;
+      if (rawInput.trim() === "") {
+        setStatus("⚠️ Validation skipped: input is empty.", true);
+        return;
+      }
+      try {
+        parseJSONSafely(rawInput);
+        setStatus("🎉 JSON is valid! Structure is correct and ready to use.", false, true);
+      } catch (err) {
+        let errorMsg = err.message;
+        if (err instanceof SyntaxError) {
+          const match = err.message.match(/position (\d+)/);
+          if (match && match[1]) {
+            const pos = parseInt(match[1], 10);
+            const lines = rawInput.substring(0, pos).split('\n');
+            const line = lines.length;
+            const column = lines[lines.length-1].length + 1;
+            errorMsg = `${err.message} (line ${line}, col ${column})`;
+          } else {
+            errorMsg = `SyntaxError: ${err.message}`;
+          }
+        }
+        setStatus(`❌ Invalid JSON — ${errorMsg}`, true);
+      }
+    }
+
+    // Minify: compress JSON to a single line without extra spaces
+    function minifyJSON() {
+      const rawInput = inputArea.value;
+      if (rawInput.trim() === "") {
+        setStatus("⚠️ Cannot minify: input is empty.", true);
+        outputArea.value = "";
+        return;
+      }
+      try {
+        const parsed = parseJSONSafely(rawInput);
+        const minified = JSON.stringify(parsed);  // no spaces
+        outputArea.value = minified;
+        setStatus(`🗜️ Minified successfully — length: ${minified.length} characters`, false, true);
+      } catch (err) {
+        let errorMsg = err.message;
+        if (err instanceof SyntaxError) {
+          errorMsg = `JSON parse error: ${err.message}`;
+        }
+        setStatus(`❌ Minify failed — ${errorMsg}`, true);
+        outputArea.value = "";
+      }
+    }
+
+    // Clear both textareas and reset status
+    function clearAll() {
+      inputArea.value = "";
+      outputArea.value = "";
+      setStatus("🧹 Cleared all fields. Paste new JSON to format or validate.", false);
+      inputArea.focus();
+    }
+
+    // Copy output to clipboard
+    async function copyOutput() {
+      const outputContent = outputArea.value;
+      if (!outputContent.trim()) {
+        setStatus("⚠️ Nothing to copy — output is empty. Format or minify JSON first.", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(outputContent);
+        setStatus("📋 Copied formatted/minified JSON to clipboard!", false, true);
+        // optional temporary glow
+        outputArea.style.transition = "0.1s";
+        outputArea.style.backgroundColor = "#e6f7ec";
+        setTimeout(() => { outputArea.style.backgroundColor = ""; }, 300);
+      } catch (err) {
+        setStatus("❌ Copy failed: clipboard not supported or permission denied.", true);
+      }
+    }
+
+    // Load a beautiful, representative example JSON (nested, array, boolean, null)
+    function loadExample() {
+      const exampleObj = {
+        "company": "FormatterHub",
+        "mission": "Simplify JSON workflows",
+        "version": 2.1,
+        "features": ["format", "validate", "minify", "copy"],
+        "metadata": {
+          "author": "JSON Toolkit",
+          "license": "MIT",
+          "verified": true,
+          "optionalField": null
+        },
+        "nestedArray": [
+          { "id": 1, "value": "alpha" },
+          { "id": 2, "value": "beta" }
+        ]
+      };
+      const prettyExample = JSON.stringify(exampleObj, null, 2);
+      inputArea.value = prettyExample;
+      setStatus("✨ Example loaded! Click 'Format' to re-indent with chosen spacing, or 'Validate' to check.", false);
+      // Optionally auto-format? But user experience: let them click format to see dynamic indent.
+      // For clarity, we DO NOT overwrite output automatically, but user can format.
+      outputArea.value = "";
+    }
+
+    // Bonus: try to provide extra contextual feedback for large JSON but we are fine.
+    // Also add live indicator for validation? Not needed but ensure format respects indent
+
+    // additional: optional when clicking format with different indent, re-format from input.
+    // to ensure that if user manually edits output, it's fine but format reads input only.
+
+    // event binding
+    formatBtn.addEventListener('click', formatJSON);
+    validateBtn.addEventListener('click', validateOnly);
+    minifyBtn.addEventListener('click', minifyJSON);
+    copyBtn.addEventListener('click', copyOutput);
+    clearBtn.addEventListener('click', clearAll);
+    exampleBtn.addEventListener('click', loadExample);
+
+    // additional: if user changes indent, but we don't auto-format, just informative.
+    // but we can add an info toaster? not needed. Provide hint
+    indentSelect.addEventListener('change', () => {
+      const indentChoice = indentSelect.value;
+      let desc = indentChoice === 'tab' ? 'Tab character' : `${indentChoice} spaces`;
+      setStatus(`Indentation set to ${desc}. Use "Format" to apply to current JSON.`, false);
+    });
+
+    // initial focus and empty state hint
+    inputArea.addEventListener('focus', () => {
+      if (inputArea.value === "") {
+        // just subtle hint, not intrusive
+      }
+    });
+
+    // Extra usability: Ctrl+Enter shortcut to format
+    inputArea.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        formatJSON();
+      }
+    });
+    // Ctrl+Shift+V for validation shortcut
+    inputArea.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
+        e.preventDefault();
+        validateOnly();
+      }
+    });
+    
+    // Edge handling: initial status
+    resetNeutral("Ready — Format, Validate, Minify. Shortcut: Ctrl+Enter → Format");
+    
+    // Provide detection for invalid JSON if the user requests something, but also make
+    // the output textarea selectable and readable (already set readonly so it can be copied via button)
+    // but we make it non-editable to avoid confusion: output is derived from input.
+    // User can always copy output and paste somewhere.
+    // Additional quality: syntax errors are nicely detailed.
+  })();
+</script>
+</body>
+</html>
